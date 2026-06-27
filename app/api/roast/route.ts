@@ -138,7 +138,7 @@ async function generateRoast(
         temperature: 2.0,
         topP: 0.95,
         topK: 64,
-        maxOutputTokens: 800,
+        maxOutputTokens: 2000,
       },
     });
 
