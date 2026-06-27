@@ -171,7 +171,8 @@ Rules:
 - Use heavy Nigerian Pidgin and street slang throughout (omo, e be things, your village, wetin, abeg, dis one, na you, etc.)
 - Reference their actual answers word-for-word at least 3 times — do not paraphrase, quote them directly and mock them
 - Zero emojis. Zero encouragement. Zero softening.
-- This is a roast, not a therapy session. Be brutal.`;
+- This is a roast, not a therapy session. Be brutal.
+- keep it concise of about 30 words max it should be a single paragraph.`;
 
     const result = await withTimeout(model.generateContent(prompt), 20000);
     const text = result.response.text().trim();
@@ -185,7 +186,7 @@ async function generateCompliment(): Promise<string> {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: "gemini-3.5-flash",
-      generationConfig: { temperature: 1.0, maxOutputTokens: 200 },
+      generationConfig: { temperature: 1.0, maxOutputTokens: 2000 },
     });
 
     const result = await withTimeout(
@@ -193,8 +194,8 @@ async function generateCompliment(): Promise<string> {
         `You are the universe itself speaking to someone extraordinary. 
 Write a deeply sincere, soul-stirring compliment. Not cheesy. Not a motivational poster. REAL. 
 Like you actually see this person and you are in awe of them.
-3-4 sentences max. No emojis. Start with the word "You." then continue.
-Make them feel like the chosen one.`,
+3-4 sentences max. No emojis. Start with the word "You are HIM." then continue.
+Make them feel like the chosen one. keep it concise of about 20 words max`,
       ),
       20000,
     );
