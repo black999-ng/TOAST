@@ -4,24 +4,28 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import roastsData from "@/data/roasts.json";
 
-const REACTION_VIDEOS = [
+const DEFAULT_REACTION_VIDEOS = [
   "/videos/reaction1.mp4",
   "/videos/reaction2.mp4",
   "/videos/reaction3.mp4",
   "/videos/reaction4.mp4",
   "/videos/reaction5.mp4",
+  "/videos/reaction6.mp4",
+  "/videos/reaction7.mp4",
+  "/videos/reaction8.mp4",
+  "/videos/reaction9.mp4",
 ];
 
-const WHATSAPP_NUMBER = "1234567890";
+const WHATSAPP_NUMBER = "09131294991";
 
 type Phase = "landing" | "questions" | "loading" | "roast" | "previous" | "submit" | "him";
 
 const FAKE_QUESTIONS = [
-  "What is your spirit animal?",
-  "Rate your intelligence from 1 to 10.",
-  "What do you consider your greatest quality?",
-  "If you were a color, what would you be?",
-  "What is your life motto?",
+   "What is your greatest strength as a person?",
+  "What is one flaw or weakness you know you need to work on?",
+  "When people misunderstand you, what do they usually get wrong?",
+  "What achievement are you most proud of so far?",
+  "What kind of person do you aspire to become in the next five years?"
 ];
 
 const INTENSITY_LABELS = [
@@ -44,13 +48,12 @@ export default function ToastAI() {
   const [userRoast, setUserRoast] = useState("");
   const [displayedText, setDisplayedText] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [reactionVideos, setReactionVideos] = useState<string[]>(DEFAULT_REACTION_VIDEOS);
   const [himText, setHimText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [intensityValue, setIntensityValue] = useState(0);
   const [intensityLabel, setIntensityLabel] = useState(INTENSITY_LABELS[0]);
-  const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const verdictRef = useRef<HTMLDivElement | null>(null);
   const TOTAL_STEPS = 1 + FAKE_QUESTIONS.length;
 
   useEffect(() => {
@@ -59,6 +62,17 @@ export default function ToastAI() {
       .then((d) => setPreviousRoast(d.roast))
       .catch(() => {
         setPreviousRoast(roastsData[Math.floor(Math.random() * roastsData.length)]);
+      });
+
+    fetch("/api/videos")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.videos) && d.videos.length > 0) {
+          setReactionVideos(d.videos);
+        }
+      })
+      .catch(() => {
+        // keep the default fallback list
       });
   }, []);
 
@@ -133,7 +147,10 @@ export default function ToastAI() {
     } else {
       setPhase("loading");
       setIntensityValue(0);
-      setVideoUrl(REACTION_VIDEOS[Math.floor(Math.random() * REACTION_VIDEOS.length)]);
+      const availableVideos = reactionVideos.length ? reactionVideos : DEFAULT_REACTION_VIDEOS;
+      setVideoUrl(availableVideos[Math.floor(Math.random() * availableVideos.length)]);
+      const loadStart = Date.now();
+      const minLoadTime = 7000;
 
       fetch("/api/roast", {
         method: "POST",
@@ -142,91 +159,37 @@ export default function ToastAI() {
       })
         .then((r) => r.json())
         .then((d) => {
-          setMyRoast(d.roast);
-          setDisplayedText("");
-          setIntensityValue(100);
-          setIntensityLabel("LOADED.");
-          setTimeout(() => setPhase("roast"), 700);
+          const finish = () => {
+            setMyRoast(d.roast);
+            setDisplayedText("");
+            setIntensityValue(100);
+            setIntensityLabel("LOADED.");
+            setPhase("roast");
+          };
+
+          const elapsed = Date.now() - loadStart;
+          const remaining = Math.max(minLoadTime - elapsed, 0);
+          setTimeout(finish, remaining);
         })
         .catch(() => {
           const fallback = roastsData[Math.floor(Math.random() * roastsData.length)];
-          setMyRoast(fallback);
-          setDisplayedText("");
-          setIntensityValue(100);
-          setIntensityLabel("LOADED.");
-          setTimeout(() => setPhase("roast"), 700);
+          const finish = () => {
+            setMyRoast(fallback);
+            setDisplayedText("");
+            setIntensityValue(100);
+            setIntensityLabel("LOADED.");
+            setPhase("roast");
+          };
+
+          const elapsed = Date.now() - loadStart;
+          const remaining = Math.max(minLoadTime - elapsed, 0);
+          setTimeout(finish, remaining);
         });
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") handleAnswer();
-  }
-
-  // Copy verdict text to clipboard
-  function handleCopyVerdict() {
-    const text = `TOAST. — THE VERDICT FOR ${name.toUpperCase()}\n\n${myRoast}\n\n— toast.ai`;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
-  // Download verdict as image using html2canvas
-  async function handleDownloadVerdict() {
-    if (!verdictRef.current) return;
-
-    try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(verdictRef.current, {
-        backgroundColor: "#0f0f0f",
-        scale: 2,
-        useCORS: true,
-      });
-      const link = document.createElement("a");
-      link.download = `toast-verdict-${name.toLowerCase().replace(/\s+/g, "-")}.png`;
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    } catch (error) {
-      console.error("Unable to export verdict image:", error);
-      const fallbackCanvas = document.createElement("canvas");
-      fallbackCanvas.width = 1400;
-      fallbackCanvas.height = 900;
-      const ctx = fallbackCanvas.getContext("2d");
-
-      if (!ctx) return;
-
-      ctx.fillStyle = "#0f0f0f";
-      ctx.fillRect(0, 0, fallbackCanvas.width, fallbackCanvas.height);
-      ctx.fillStyle = "#fef2f2";
-      ctx.font = "700 48px monospace";
-      ctx.fillText(`TOAST. — THE VERDICT${name ? ` FOR ${name.toUpperCase()}` : ""}`, 90, 180);
-      ctx.font = "400 28px monospace";
-      ctx.fillStyle = "#d4d4d8";
-      ctx.fillText(myRoast || "Your roast is ready.", 90, 280, 1220);
-      ctx.fillStyle = "#71717a";
-      ctx.font = "400 24px monospace";
-      ctx.fillText("— toast.ai", 90, 760);
-
-      const link = document.createElement("a");
-      link.download = `toast-verdict-${name.toLowerCase().replace(/\s+/g, "-")}.png`;
-      link.href = fallbackCanvas.toDataURL("image/png");
-      link.click();
-    }
-  }
-
-  // Share via Web Share API if available, fallback to copy
-  async function handleShare() {
-    const text = `TOAST. just destroyed me:\n\n"${myRoast}"\n\nGet roasted: toast.ai`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "My TOAST. Verdict", text });
-      } catch {}
-    } else {
-      navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
   }
 
   async function handleSubmitRoast() {
@@ -278,12 +241,13 @@ export default function ToastAI() {
 
   const isNameStep = step === 0;
   const currentQuestion = isNameStep ? null : FAKE_QUESTIONS[step - 1];
+  const canProceed = currentAnswer.trim().length > 0;
 
   return (
-    <main className="min-h-screen bg-[#080808] text-white overflow-hidden relative">
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 overflow-hidden relative">
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-red-700/10 blur-[120px]" />
-        <div className="absolute bottom-1/3 left-1/4 w-[400px] h-[400px] rounded-full bg-orange-600/6 blur-[100px]" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-amber-500/10 blur-[120px]" />
+        <div className="absolute bottom-1/3 left-1/4 w-[400px] h-[400px] rounded-full bg-cyan-400/8 blur-[100px]" />
       </div>
 
       <AnimatePresence mode="wait">
@@ -302,25 +266,24 @@ export default function ToastAI() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-950/60 border border-red-800/40 text-red-400 text-xs font-mono tracking-widest mb-10"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-950/40 border border-amber-800/40 text-amber-300 text-xs font-mono tracking-widest mb-10"
             >
               TRIAL IN PROGRESS
             </motion.div>
-
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
               className="text-8xl md:text-[10rem] font-black tracking-tighter leading-none mb-4"
             >
-              TOAST<span className="text-red-500">.</span>
+              TOAST<span className="text-amber-400">.</span>
             </motion.h1>
 
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
-              className="text-zinc-400 text-lg font-mono mb-2 max-w-md"
+              className="text-slate-300 text-lg font-mono mb-2 max-w-md"
             >
               You have been summoned.
             </motion.p>
@@ -329,7 +292,7 @@ export default function ToastAI() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.65 }}
-              className="text-zinc-600 text-sm font-mono mb-14 max-w-sm"
+              className="text-slate-400 text-sm font-mono mb-14 max-w-sm"
             >
               The AI will ask you 6 very important questions. Answer carefully.
               It will not matter.
@@ -342,7 +305,7 @@ export default function ToastAI() {
               onClick={handleStart}
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.97 }}
-              className="px-10 py-4 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold text-lg tracking-wide transition-colors shadow-[0_0_40px_rgba(220,38,38,0.35)] cursor-pointer"
+              className="px-10 py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-lg tracking-wide transition-colors shadow-[0_0_40px_rgba(251,146,60,0.35)] cursor-pointer"
             >
               I accept my fate
             </motion.button>
@@ -351,7 +314,7 @@ export default function ToastAI() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.1 }}
-              className="text-zinc-700 text-xs font-mono mt-8"
+              className="text-slate-500 text-xs font-mono mt-8"
             >
               Warning: This will hurt.
             </motion.p>
@@ -373,12 +336,11 @@ export default function ToastAI() {
                 <div
                   key={i}
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    i < step ? "bg-red-500 w-2" : i === step ? "bg-white w-7" : "bg-zinc-700 w-2"
+                    i < step ? "bg-amber-400 w-2" : i === step ? "bg-white w-7" : "bg-slate-600 w-2"
                   }`}
                 />
               ))}
             </div>
-
             <div className="w-full max-w-xl">
               {isNameStep ? (
                 <>
@@ -402,12 +364,17 @@ export default function ToastAI() {
                 onChange={(e) => setCurrentAnswer(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={isNameStep ? "Enter your name..." : "Your answer..."}
-                className="w-full bg-zinc-900/80 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white text-lg placeholder-zinc-600 outline-none focus:border-red-500/50 focus:shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-all font-mono"
+                className="w-full bg-slate-900/90 border border-slate-700/50 rounded-2xl px-6 py-4 text-slate-100 text-lg placeholder-slate-500 outline-none focus:border-amber-400/50 focus:shadow-[0_0_20px_rgba(251,146,60,0.12)] transition-all font-mono"
               />
 
               <button
                 onClick={handleAnswer}
-                className="mt-4 w-full py-4 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-semibold transition-colors text-sm tracking-widest font-mono cursor-pointer"
+                disabled={!canProceed}
+                className={`mt-4 w-full py-4 rounded-2xl text-sm tracking-widest font-mono font-semibold transition-all ${
+                  canProceed
+                    ? "bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-[0_0_30px_rgba(251,146,60,0.25)] hover:shadow-[0_0_40px_rgba(251,146,60,0.35)]"
+                    : "bg-slate-700 text-slate-500 cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
+                }`}
               >
                 {isNameStep ? "PROCEED" : "NEXT"}
               </button>
@@ -434,14 +401,14 @@ export default function ToastAI() {
             <div className="w-full max-w-sm mb-6">
               <div className="h-2 rounded-full bg-zinc-800 overflow-hidden">
                 <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-red-800 via-red-500 to-orange-400"
+                  className="h-full rounded-full bg-gradient-to-r from-amber-700 via-amber-500 to-amber-300"
                   animate={{ width: `${intensityValue}%` }}
                   transition={{ ease: "linear", duration: 0.2 }}
                 />
               </div>
             </div>
 
-            <p className="text-7xl font-black text-red-500 font-mono">
+            <p className="text-7xl font-black text-amber-300 font-mono">
               {intensityValue}<span className="text-3xl text-zinc-600">%</span>
             </p>
 
@@ -459,7 +426,7 @@ export default function ToastAI() {
             className="min-h-screen flex flex-col items-center justify-center px-6 py-16"
           >
             {/* TikTok video */}
-            <div className="w-full max-w-xs mb-8 rounded-2xl overflow-hidden border border-zinc-800 shadow-[0_0_60px_rgba(220,38,38,0.18)]">
+            <div className="w-full max-w-xs mb-8 rounded-2xl overflow-hidden border border-slate-700 shadow-[0_0_60px_rgba(251,146,60,0.18)]">
               <video
                 src={videoUrl}
                 className="w-full"
@@ -470,29 +437,28 @@ export default function ToastAI() {
               />
             </div>
 
-            {/* Verdict card — ref for screenshot */}
+            {/* Verdict card */}
             <div
-              ref={verdictRef}
               style={{
                 width: "100%",
                 maxWidth: "36rem",
-                backgroundColor: "rgba(24, 24, 27, 0.6)",
-                border: "1px solid #27272a",
+                backgroundColor: "rgba(15, 23, 42, 0.82)",
+                border: "1px solid #334155",
                 borderRadius: "1.5rem",
                 padding: "2rem",
               }}
             >
-              <p className="text-red-500 text-xs font-mono tracking-widest mb-5">
+              <p className="text-amber-300 text-xs font-mono tracking-widest mb-5">
                 THE VERDICT{name ? ` FOR ${name.toUpperCase()}` : ""}
               </p>
-              <p className="text-white text-lg leading-relaxed font-mono">
+              <p className="text-slate-100 text-lg leading-relaxed font-mono">
                 {displayedText}
                 {isTyping && (
-                  <span className="inline-block w-0.5 h-5 bg-red-500 ml-1 animate-pulse align-middle" />
+                  <span className="inline-block w-0.5 h-5 bg-amber-300 ml-1 animate-pulse align-middle" />
                 )}
               </p>
               {!isTyping && displayedText && (
-                <p className="text-zinc-700 text-xs font-mono mt-6">— toast.ai</p>
+                <p className="text-slate-400 text-xs font-mono mt-6">— toast.ai</p>
               )}
             </div>
 
@@ -504,42 +470,17 @@ export default function ToastAI() {
                 transition={{ delay: 0.3 }}
                 className="w-full max-w-xl mt-6 flex flex-col gap-3"
               >
-                {/* Export row */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleDownloadVerdict}
-                    className="flex-1 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-mono text-sm tracking-widest transition-colors cursor-pointer"
-                  >
-                    SAVE AS IMAGE
-                  </button>
-                  <button
-                    onClick={handleShare}
-                    className="flex-1 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-mono text-sm tracking-widest transition-colors cursor-pointer"
-                  >
-                    {copied ? "COPIED." : "SHARE"}
-                  </button>
-                  <button
-                    onClick={handleCopyVerdict}
-                    className="flex-1 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white font-mono text-sm tracking-widest transition-colors cursor-pointer"
-                  >
-                    {copied ? "DONE." : "COPY TEXT"}
-                  </button>
-                </div>
-
-                {/* WhatsApp button */}
                 <a
-                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=I%20just%20got%20roasted%20on%20TOAST.%20and%20I%20want%20to%20fight%20the%20creator.`}
+                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hello%20Creator%2C%20I%20just%20got%20roasted%20on%20TOAST.%20Can%20we%20talk%3F`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3 rounded-2xl bg-green-900/40 hover:bg-green-900/70 border border-green-800/40 text-green-400 font-mono text-sm tracking-widest text-center transition-colors cursor-pointer"
+                  className="w-full py-4 rounded-2xl bg-amber-500 text-slate-950 font-semibold text-sm tracking-[0.18em] uppercase text-center transition-colors duration-200 hover:bg-amber-400 shadow-[0_12px_30px_rgba(251,146,60,0.25)] border border-amber-400/20"
                 >
-                  Want to fight the Creator? DM him yourself
+                  Contact the Creator
                 </a>
-
-                {/* Continue */}
                 <button
                   onClick={() => setPhase("previous")}
-                  className="w-full py-4 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-mono text-xs tracking-widest transition-colors cursor-pointer border border-zinc-800"
+                  className="w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono text-sm tracking-widest transition-colors cursor-pointer border border-amber-400/20 shadow-[0_14px_35px_rgba(251,146,60,0.18)]"
                 >
                   I HAVE RECEIVED MY VERDICT
                 </button>
@@ -575,7 +516,7 @@ export default function ToastAI() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}
               onClick={() => setPhase("submit")}
-              className="mt-10 px-8 py-4 rounded-2xl bg-red-700 hover:bg-red-600 text-white font-bold tracking-wide transition-colors shadow-[0_0_30px_rgba(185,28,28,0.25)] cursor-pointer"
+              className="mt-10 px-8 py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold tracking-wide transition-colors shadow-[0_0_30px_rgba(251,146,60,0.25)] cursor-pointer"
             >
               Now roast the next person
             </motion.button>
@@ -603,13 +544,13 @@ export default function ToastAI() {
                 onChange={(e) => setUserRoast(e.target.value)}
                 placeholder="Destroy them..."
                 rows={5}
-                className="w-full bg-zinc-900/80 border border-zinc-700/50 rounded-2xl px-6 py-4 text-white text-base placeholder-zinc-600 outline-none focus:border-red-500/50 focus:shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-all font-mono resize-none"
+                className="w-full bg-slate-900/90 border border-slate-700/50 rounded-2xl px-6 py-4 text-slate-100 text-base placeholder-slate-500 outline-none focus:border-amber-400/50 focus:shadow-[0_0_20px_rgba(251,146,60,0.12)] transition-all font-mono resize-none"
               />
 
               <button
                 onClick={handleSubmitRoast}
                 disabled={!userRoast.trim()}
-                className="mt-4 w-full py-4 rounded-2xl bg-red-600 hover:bg-red-500 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-white font-bold text-lg tracking-wide transition-all cursor-pointer"
+                className="mt-4 w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-slate-950 font-bold text-lg tracking-wide transition-all cursor-pointer"
               >
                 Send it
               </button>

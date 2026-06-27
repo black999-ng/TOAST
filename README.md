@@ -18,6 +18,26 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
+## Environment
+
+Set your Gemini API keys using numbered env vars so Vercel handles them cleanly:
+
+```bash
+GEMINI1=key1
+GEMINI2=key2
+GEMINI3=key3
+```
+
+The server rotates through all `GEMINI1`, `GEMINI2`, etc. keys on each request using Vercel KV.
+
+If you prefer a single key or comma-separated list, the older formats still work:
+
+```bash
+GEMINI_API_KEY=key1
+# or
+GEMINI_API_KEYS="key1,key2,key3"
+```
+
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

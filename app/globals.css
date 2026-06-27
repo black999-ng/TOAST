@@ -7,25 +7,25 @@
 body {
   margin: 0;
   padding: 0;
-  background: #080808;
-  color: white;
+  background: #101827;
+  color: #f8fafc;
   font-family: 'IBM Plex Mono', 'Courier New', monospace;
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: rgba(220, 38, 38, 0.4);
+  background: rgba(251, 146, 60, 0.35);
 }
 
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #111827;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2a2a2a;
-  border-radius: 2px;
+  background: #475569;
+  border-radius: 9999px;
 }
